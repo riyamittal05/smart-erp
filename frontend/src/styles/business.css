@@ -1,0 +1,87 @@
+.business-page {
+  padding: 30px;
+  background: #f4f6f9;
+  min-height: 100vh;
+}
+
+.business-page h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #222;
+  font-size: 30px;
+}
+
+.business-page form {
+  max-width: 900px;
+  margin: auto;
+  background: #fff;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.business-page input,
+.business-page textarea,
+.business-page select {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #dcdcdc;
+  border-radius: 8px;
+  font-size: 15px;
+  outline: none;
+  transition: 0.3s;
+  box-sizing: border-box;
+}
+
+.business-page input:focus,
+.business-page textarea:focus,
+.business-page select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 5px rgba(37, 99, 235, 0.2);
+}
+
+.business-page textarea {
+  resize: vertical;
+  min-height: 120px;
+  grid-column: 1 / -1;
+}
+
+.business-page button {
+  grid-column: 1 / -1;
+  padding: 14px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 17px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.business-page button:hover {
+  background: #1d4ed8;
+}
+
+@media (max-width: 768px) {
+  .business-page {
+    padding: 15px;
+  }
+
+  .business-page form {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+
+  .business-page textarea,
+  .business-page button {
+    grid-column: auto;
+  }
+
+  .business-page h2 {
+    font-size: 24px;
+  }
+}
