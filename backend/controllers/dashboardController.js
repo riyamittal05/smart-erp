@@ -1,44 +1,47 @@
+const mongoose = require("mongoose");
 const Sale = require("../models/Sale");
 const Product = require("../models/Product");
 const Customer = require("../models/Customer");
 
 const getDashboardData = async (req, res) => {
   try {
-
+    // Total Products
     const totalProducts = await Product.countDocuments({
       user: req.user.id,
       isActive: true,
     });
 
+    // Total Customers
     const totalCustomers = await Customer.countDocuments({
       user: req.user.id,
     });
 
+    // Total Sales
     const totalSales = await Sale.countDocuments({
       user: req.user.id,
     });
 
+    // Total Revenue
     const revenueData = await Sale.aggregate([
       {
         $match: {
-          user: req.user._id,
+          user: new mongoose.Types.ObjectId(req.user.id),
         },
       },
       {
         $group: {
           _id: null,
           totalRevenue: {
-            $sum: "$totalAmount",
+            $sum: "$grandTotal",
           },
         },
       },
     ]);
 
     const totalRevenue =
-      revenueData.length > 0
-        ? revenueData[0].totalRevenue
-        : 0;
+      revenueData.length > 0 ? revenueData[0].totalRevenue : 0;
 
+    // Low Stock Products
     const lowStock = await Product.countDocuments({
       user: req.user.id,
       quantity: {
@@ -48,6 +51,7 @@ const getDashboardData = async (req, res) => {
       isActive: true,
     });
 
+    // Out of Stock Products
     const outOfStock = await Product.countDocuments({
       user: req.user.id,
       quantity: 0,
@@ -64,12 +68,12 @@ const getDashboardData = async (req, res) => {
     });
 
   } catch (error) {
-  console.error("Dashboard Error:", error);
+    console.error("Dashboard Error:", error);
 
-  res.status(500).json({
-    message: error.message,
-  });
-}
+    res.status(500).json({
+      message: error.message,
+    });
+  }
 };
 
 module.exports = {

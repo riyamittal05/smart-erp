@@ -5,33 +5,48 @@ const Counter = require("../models/Counter");
 const PDFDocument=require("pdfkit");
 const createSale = async (req, res) => {
   try {
-    const { customer, product, quantity } = req.body;
+const { customer, items, paymentStatus = "Paid" } = req.body;
+
+ let saleItems = [];
+let grandTotal = 0;
+
+for (const item of items) {
 
     const existingProduct = await Product.findOne({
-  _id: product,
-  user: req.user.id,
-  isActive: true,
-});
+        _id: item.product,
+        user: req.user.id,
+        isActive: true,
+    });
 
     if (!existingProduct) {
-      return res.status(404).json({
-        message: "Product not found",
-      });
+        return res.status(404).json({
+            message: `${item.product} not found`,
+        });
     }
 
-    if (existingProduct.quantity < quantity) {
-      return res.status(400).json({
-        message: "Insufficient stock",
-      });
+    if (existingProduct.quantity < item.quantity) {
+        return res.status(400).json({
+            message: `${existingProduct.name} has insufficient stock`,
+        });
     }
 
-const totalAmount =
-  Number(existingProduct.sellingPrice) *
-  Number(quantity);
+    const price = Number(existingProduct.sellingPrice);
 
-    existingProduct.quantity -= quantity;
+    const total = price * Number(item.quantity);
+
+    grandTotal += total;
+
+    existingProduct.quantity -= item.quantity;
 
     await existingProduct.save();
+
+    saleItems.push({
+        product: existingProduct._id,
+        quantity: item.quantity,
+        price,
+        total,
+    });
+}
 
 const counter = await Counter.findOneAndUpdate(
   {
@@ -42,7 +57,7 @@ const counter = await Counter.findOneAndUpdate(
     $inc: { sequence: 1 },
   },
   {
-    new: true,
+     returnDocument: "after",
     upsert: true,
   }
 );
@@ -52,10 +67,9 @@ const sale = await Sale.create({
   user: req.user.id,
   invoiceNumber: counter.sequence,
   customer,
-  product,
-  quantity,
-  totalAmount,
-  paymentStatus: "Paid",
+  items: saleItems,
+  grandTotal,
+  paymentStatus,
 });
 
     res.status(201).json({
@@ -77,7 +91,10 @@ const getAllSales = async (req, res) => {
       user: req.user.id,
     })
       .populate("customer", "name email")
-    .populate("product", "name sellingPrice")
+    .populate({
+    path:"items.product",
+    select:"name category sellingPrice"
+})
       .sort({ createdAt: -1 });
 
     res.status(200).json(sales);
@@ -96,7 +113,10 @@ const getSaleById = async (req, res) => {
       user: req.user.id,
     })
       .populate("customer", "name email")
-  .populate("product", "name sellingPrice")
+.populate({
+    path:"items.product",
+    select:"name category sellingPrice"
+})
     if (!sale) {
       return res.status(404).json({
         message: "Sale not found",
@@ -120,7 +140,10 @@ const generateInvoice = async (req, res) => {
 
     const sale = await Sale.findById(saleId)
       .populate("customer", "name email phone address")
-     .populate("product", "name category sellingPrice");
+    .populate({
+    path:"items.product",
+    select:"name category sellingPrice"
+});
 
     if (!sale) {
       return res.status(404).json({
@@ -284,7 +307,11 @@ doc
   .fillColor("white")
   .font("Helvetica-Bold")
   .fontSize(10)
-  .text("PAID", 405, 327);
+.text(
+  sale.paymentStatus.toUpperCase(),
+  400,
+  327
+);
 
 doc.fillColor("black");
 
@@ -331,41 +358,66 @@ doc.text("Qty", qtyX, tableTop + 8);
 doc.text("Price", priceX, tableTop + 8);
 
 doc.text("Amount", amountX, tableTop + 8);
-
-// Product Row
-
 doc.fillColor("black");
 
+let rowY = tableTop + 43;
+
 doc
-  .rect(50, tableTop + 28, 495, 42)
+  .rect(
+    50,
+    tableTop + 28,
+    495,
+    sale.items.length * 30 + 15
+  )
   .stroke("#D1D5DB");
 
 doc.font("Helvetica").fontSize(11);
 
-doc.text(sale.product?.name || "-", itemX, tableTop + 43);
+sale.items.forEach((item) => {
 
-doc.text(sale.product?.category || "-", categoryX, tableTop + 43);
+  doc.text(
+    item.product?.name || "-",
+    itemX,
+    rowY
+  );
 
-doc.text(String(sale.quantity), qtyX, tableTop + 43);
+  doc.text(
+    item.product?.category || "-",
+    categoryX,
+    rowY
+  );
 
-doc.text(
-  formatCurrency(sale.product?.sellingPrice),
-  priceX,
-  tableTop + 43
-);
+  doc.text(
+    String(item.quantity),
+    qtyX,
+    rowY
+  );
 
-doc.text(
-  formatCurrency(sale.totalAmount),
-  amountX,
-  tableTop + 43
-);
+  doc.text(
+    formatCurrency(item.price),
+    priceX,
+    rowY
+  );
 
-doc.y = tableTop + 75;
+  doc.text(
+    formatCurrency(item.total),
+    amountX,
+    rowY
+  );
+
+  rowY += 30;
+
+});
+
+doc.y = rowY + 20;
 // =====================================================
 // TOTAL SUMMARY
 // =====================================================
 
-const summaryTop = tableTop + 85;
+const summaryTop =
+tableTop +
+sale.items.length * 30 +
+40;
 
 // Summary Box
 doc
@@ -379,7 +431,7 @@ doc
   .text("Sub Total", 350, summaryTop + 15);
 
 doc.text(
-  formatCurrency(sale.totalAmount),
+  formatCurrency(sale.grandTotal),
   455,
   summaryTop + 15,
   {
@@ -414,7 +466,7 @@ doc
   .text("GRAND TOTAL", 350, summaryTop + 68);
 
 doc.text(
-  formatCurrency(sale.totalAmount),
+  formatCurrency(sale.grandTotal),
   430,
   summaryTop + 68,
   {
@@ -428,8 +480,8 @@ doc.text(
 // =====================================================
 
 doc
-  .moveTo(50, 650)
-  .lineTo(545, 700)
+.moveTo(50, summaryTop + 120)
+.lineTo(545, summaryTop + 120)
   .strokeColor("#D1D5DB")
   .stroke();
 
@@ -437,7 +489,7 @@ doc
   .fillColor("#1E3A8A")
   .font("Helvetica-Bold")
   .fontSize(15)
-  .text("Thank You For Your Business!", 50, 715, {
+  .text("Thank You For Your Business!", 50, summaryTop + 135, {
     align: "center",
   });
 
@@ -448,7 +500,7 @@ doc
   .text(
     "This is a computer generated invoice and does not require a signature.",
     50,
-    740,
+  summaryTop + 160,
     {
       align: "center",
     }
@@ -460,7 +512,7 @@ doc
   .text(
     `Generated by ${business?.shopName || "Smart ERP"}`,
     50,
-    758,
+   summaryTop + 178,
     {
       align: "center",
     }

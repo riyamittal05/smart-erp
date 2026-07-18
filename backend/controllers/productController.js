@@ -87,7 +87,7 @@ const updateProduct = async (req, res) => {
       },
       req.body,
       {
-        new: true,
+         returnDocument: "after",
       }
     );
 
@@ -119,7 +119,7 @@ const deleteProduct = async (req, res) => {
         isActive: false,
       },
       {
-        new: true,
+         returnDocument: "after",
       }
     );
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiSearch, FiPlus, FiDownload } from "react-icons/fi";
 import API from "../api/axios";
+import { toast } from "react-toastify";
 import "../styles/table.css";
 
 const Sales = () => {
@@ -10,28 +11,33 @@ const Sales = () => {
 
   const navigate = useNavigate();
 
+  useEffect(() => {
+    fetchSales();
+  }, []);
+
   const fetchSales = async () => {
     try {
       const res = await API.get("/sales");
       setSales(res.data);
     } catch (error) {
       console.log(error);
+      toast.error("Failed to load sales");
     }
   };
 
-  useEffect(() => {
-    fetchSales();
-  }, []);
-
   const filteredSales = sales.filter((sale) => {
     const customer = sale.customer?.name?.toLowerCase() || "";
-    const product = sale.product?.name?.toLowerCase() || "";
+
+    const products =
+      sale.items?.map((item) => item.product?.name?.toLowerCase()).join(" ") ||
+      "";
 
     return (
       customer.includes(search.toLowerCase()) ||
-      product.includes(search.toLowerCase())
+      products.includes(search.toLowerCase())
     );
   });
+
   const downloadInvoice = async (saleId) => {
     try {
       const token = localStorage.getItem("token");
@@ -51,10 +57,11 @@ const Sales = () => {
 
       window.open(fileURL, "_blank");
     } catch (error) {
-      console.error(error);
-      alert("Failed to download invoice");
+      console.log(error);
+      toast.error("Failed to download invoice");
     }
   };
+
   return (
     <div className="products-page">
       <div className="page-header">
@@ -69,7 +76,7 @@ const Sales = () => {
 
             <input
               type="text"
-              placeholder="Search sales..."
+              placeholder="Search by customer or product..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -92,9 +99,10 @@ const Sales = () => {
           <thead>
             <tr>
               <th>Customer</th>
-              <th>Product</th>
-              <th>Quantity</th>
-              <th>Total Amount</th>
+              <th>Products</th>
+              <th>Total Qty</th>
+              <th>Grand Total</th>
+              <th>Payment</th>
               <th>Date</th>
               <th>Invoice</th>
             </tr>
@@ -102,34 +110,66 @@ const Sales = () => {
 
           <tbody>
             {filteredSales.length > 0 ? (
-              filteredSales.map((sale) => (
-                <tr key={sale._id}>
-                  <td>{sale.customer?.name}</td>
+              filteredSales.map((sale) => {
+                const totalQty = sale.items.reduce(
+                  (sum, item) => sum + Number(item.quantity),
+                  0,
+                );
 
-                  <td>
-                    <span className="category-badge">{sale.product?.name}</span>
-                  </td>
+                return (
+                  <tr key={sale._id}>
+                    <td>{sale.customer?.name}</td>
 
-                  <td>{sale.quantity}</td>
+                    <td>
+                      {sale.items.map((item, index) => (
+                        <div key={index}>
+                          <span className="category-badge">
+                            {item.product?.name}
+                          </span>{" "}
+                          × {item.quantity}
+                        </div>
+                      ))}
+                    </td>
 
-                  <td>₹ {sale.totalAmount.toLocaleString()}</td>
+                    <td>{totalQty}</td>
 
-                  <td>{new Date(sale.createdAt).toLocaleDateString()}</td>
+                    <td>₹ {Number(sale.grandTotal).toLocaleString("en-IN")}</td>
 
-                  <td>
-                    <button
-                      className="invoice-btn"
-                      onClick={() => downloadInvoice(sale._id)}
-                    >
-                      <FiDownload />
-                      Invoice
-                    </button>
-                  </td>
-                </tr>
-              ))
+                    <td>
+                      <span
+                        className="category-badge"
+                        style={{
+                          backgroundColor:
+                            sale.paymentStatus === "Paid"
+                              ? "#d1fae5"
+                              : "#fef3c7",
+                          color:
+                            sale.paymentStatus === "Paid"
+                              ? "#065f46"
+                              : "#92400e",
+                        }}
+                      >
+                        {sale.paymentStatus}
+                      </span>
+                    </td>
+
+                    <td>{new Date(sale.createdAt).toLocaleDateString()}</td>
+
+                    <td>
+                      <button
+                        className="invoice-btn"
+                        onClick={() => downloadInvoice(sale._id)}
+                      >
+                        <FiDownload />
+                        Invoice
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
-                <td colSpan="6" className="empty-state">
+                <td colSpan="7" className="empty-state">
                   No sales found.
                 </td>
               </tr>

@@ -101,7 +101,7 @@ exports.updateBusiness = async (req, res) => {
   email: req.body.email?.toLowerCase(),
 },
       {
-        new: true,
+         returnDocument: "after",
       }
     );
 

@@ -4,27 +4,36 @@ const Customer = require("../models/Customer");
 
 
 //sales report
+// Sales Report
 const getSalesReport = async (req, res) => {
   try {
+    const sales = await Sale.find()
+      .populate("customer", "name email phone")
+      .populate({
+        path: "items.product",
+        select: "name category sellingPrice",
+      });
 
-    const sales = await Sale.find().populate("customer","name email phone").populate("product","name category price");
-const totalSales=sales.length;
-const totalRevenue=sales.reduce((sum,sale)=>{
-    return sum+sale.totalAmount;
-},0);
-   
+    const totalSales = sales.length;
+
+    const totalRevenue = sales.reduce((sum, sale) => {
+      return sum + sale.grandTotal;
+    }, 0);
+
     res.status(200).json({
-        success:true,
+      success: true,
       message: "Sales report fetched successfully",
       totalSales,
       totalRevenue,
       sales,
     });
   } catch (error) {
+    console.log(error);
+
     res.status(500).json({
-        success:false,
+      success: false,
       message: "Error fetching sales report",
-      error:error.message,
+      error: error.message,
     });
   }
 };

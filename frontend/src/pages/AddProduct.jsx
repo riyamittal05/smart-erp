@@ -155,7 +155,7 @@ const AddProduct = () => {
             <input
               type="number"
               name="reorderLevel"
-              placeholder="10"
+              placeholder="Enter Low Stock Limit"
               value={formData.reorderLevel}
               onChange={handleChange}
               min="0"

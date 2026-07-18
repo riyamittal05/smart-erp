@@ -1,5 +1,34 @@
 const mongoose = require("mongoose");
 
+const saleItemSchema = new mongoose.Schema(
+  {
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      required: true,
+    },
+
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    total: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+  },
+  { _id: false }
+);
+
 const saleSchema = new mongoose.Schema(
   {
     user: {
@@ -21,19 +50,18 @@ const saleSchema = new mongoose.Schema(
       required: true,
     },
 
-    product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
+    items: {
+      type: [saleItemSchema],
       required: true,
+      validate: {
+        validator: function (items) {
+          return items.length > 0;
+        },
+        message: "At least one product is required.",
+      },
     },
 
-    quantity: {
-      type: Number,
-      required: true,
-      min: 1,
-    },
-
-    totalAmount: {
+    grandTotal: {
       type: Number,
       required: true,
       min: 0,
