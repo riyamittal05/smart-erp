@@ -32,8 +32,12 @@ const Login = () => {
       const res = await API.post("/auth/login", formData);
 
       localStorage.setItem("token", res.data.token);
+      localStorage.setItem("userName", res.data.user.name);
+      localStorage.setItem("userEmail", res.data.user.email);
+      localStorage.setItem("userRole", res.data.user.role);
+      localStorage.setItem("businessId", res.data.user.businessId || "");
 
-      toast.success("Login Successful 🎉");
+      toast.success(`Welcome ${res.data.user.name} 👋`);
 
       navigate("/dashboard");
     } catch (error) {

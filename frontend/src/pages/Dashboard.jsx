@@ -104,7 +104,16 @@ const Dashboard = () => {
             <FaRupeeSign />
           </div>
         </div>
+        <div className="card sales-card">
+          <div className="card-content">
+            <h3>Pending Amount</h3>
+            <p>₹ {Number(stats.pendingAmount || 0).toLocaleString("en-IN")}</p>
+          </div>
 
+          <div className="card-icon">
+            <FaExclamationTriangle />
+          </div>
+        </div>
         <div className="card products-card">
           <div className="card-content">
             <h3>Low Stock</h3>

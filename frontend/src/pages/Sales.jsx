@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiSearch, FiPlus, FiDownload } from "react-icons/fi";
+import { FiSearch, FiPlus, FiDownload, FiCheckCircle } from "react-icons/fi";
 import API from "../api/axios";
 import { toast } from "react-toastify";
 import "../styles/table.css";
@@ -18,10 +18,21 @@ const Sales = () => {
   const fetchSales = async () => {
     try {
       const res = await API.get("/sales");
-      setSales(res.data);
+      setSales(res.data.sales);
     } catch (error) {
       console.log(error);
       toast.error("Failed to load sales");
+    }
+  };
+
+  const markAsPaid = async (saleId) => {
+    try {
+      await API.patch(`/sales/${saleId}/mark-paid`);
+      toast.success("Marked as paid");
+      fetchSales();
+    } catch (error) {
+      console.log(error);
+      toast.error(error.response?.data?.message || "Failed to update payment");
     }
   };
 
@@ -40,21 +51,12 @@ const Sales = () => {
 
   const downloadInvoice = async (saleId) => {
     try {
-      const token = localStorage.getItem("token");
-
       const response = await API.get(`/sales/invoice/${saleId}`, {
         responseType: "blob",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
-      const file = new Blob([response.data], {
-        type: "application/pdf",
-      });
-
+      const file = new Blob([response.data], { type: "application/pdf" });
       const fileURL = window.URL.createObjectURL(file);
-
       window.open(fileURL, "_blank");
     } catch (error) {
       console.log(error);
@@ -73,7 +75,6 @@ const Sales = () => {
         <div className="header-actions">
           <div className="search-box">
             <FiSearch className="search-icon" />
-
             <input
               type="text"
               placeholder="Search by customer or product..."
@@ -104,7 +105,7 @@ const Sales = () => {
               <th>Grand Total</th>
               <th>Payment</th>
               <th>Date</th>
-              <th>Invoice</th>
+              <th>Actions</th>
             </tr>
           </thead>
 
@@ -137,16 +138,16 @@ const Sales = () => {
 
                     <td>
                       <span
-                        className="category-badge"
+                        className="stock-badge"
                         style={{
-                          backgroundColor:
+                          background:
                             sale.paymentStatus === "Paid"
-                              ? "#d1fae5"
-                              : "#fef3c7",
+                              ? "var(--success-bg)"
+                              : "var(--warning-bg)",
                           color:
                             sale.paymentStatus === "Paid"
-                              ? "#065f46"
-                              : "#92400e",
+                              ? "var(--success)"
+                              : "var(--accent-dark)",
                         }}
                       >
                         {sale.paymentStatus}
@@ -156,13 +157,25 @@ const Sales = () => {
                     <td>{new Date(sale.createdAt).toLocaleDateString()}</td>
 
                     <td>
-                      <button
-                        className="invoice-btn"
-                        onClick={() => downloadInvoice(sale._id)}
-                      >
-                        <FiDownload />
-                        Invoice
-                      </button>
+                      <div className="action-buttons">
+                        {sale.paymentStatus === "Pending" && (
+                          <button
+                            className="edit-btn"
+                            onClick={() => markAsPaid(sale._id)}
+                          >
+                            <FiCheckCircle />
+                            Mark Paid
+                          </button>
+                        )}
+
+                        <button
+                          className="invoice-btn"
+                          onClick={() => downloadInvoice(sale._id)}
+                        >
+                          <FiDownload />
+                          Invoice
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

@@ -1,6 +1,9 @@
-import { FaUserCircle, FaCalendarAlt } from "react-icons/fa";
+import { FaUserCircle, FaCalendarAlt, FaBars } from "react-icons/fa";
+import { useLocation } from "react-router-dom";
 
-const Navbar = () => {
+const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
+  const location = useLocation();
+
   const today = new Date();
 
   const currentDate = today.toLocaleDateString("en-GB", {
@@ -10,10 +13,33 @@ const Navbar = () => {
     year: "numeric",
   });
 
+  // Username (Temporary)
+  const userName = localStorage.getItem("userName") || "User";
+
+  // Dynamic Page Title
+  const pageTitles = {
+    "/dashboard": "Dashboard",
+    "/products": "Products",
+    "/customers": "Customers",
+    "/sales": "Sales",
+    "/reports": "Reports",
+    "/business": "Business Profile",
+  };
+
+  const pageTitle = pageTitles[location.pathname] || "Smart ERP";
+
   return (
-    <div className="navbar">
+    <header className="navbar">
       <div className="navbar-left">
-        <h2>Dashboard Overview</h2>
+        {/* Mobile Hamburger */}
+        <button
+          className="menu-btn"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+        >
+          <FaBars />
+        </button>
+
+        <h2>{pageTitle}</h2>
       </div>
 
       <div className="navbar-right">
@@ -24,10 +50,10 @@ const Navbar = () => {
 
         <div className="user-box">
           <FaUserCircle className="user-icon" />
-          <span>Welcome, User</span>
+          <span>Welcome, {userName}</span>
         </div>
       </div>
-    </div>
+    </header>
   );
 };
 

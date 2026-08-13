@@ -2,12 +2,12 @@ const mongoose = require("mongoose");
 
 const counterSchema = new mongoose.Schema(
   {
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
-    },
+  business: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Business",
+  required: true,
+  index: true,
+},
 
     name: {
       type: String,
@@ -25,6 +25,6 @@ const counterSchema = new mongoose.Schema(
 );
 
 // Ek user ke liye ek hi counter name hoga
-counterSchema.index({ user: 1, name: 1 }, { unique: true });
+counterSchema.index({ business: 1, name: 1 }, { unique: true });
 
 module.exports = mongoose.model("Counter", counterSchema);

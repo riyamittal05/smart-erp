@@ -2,12 +2,12 @@ const mongoose = require("mongoose");
 
 const customerSchema = new mongoose.Schema(
   {
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
-    },
+   business: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Business",
+  required: true,
+  index: true,
+},
 
     name: {
       type: String,

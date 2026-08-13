@@ -2,22 +2,24 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { FiSearch, FiPlus, FiEdit, FiTrash2 } from "react-icons/fi";
+import { FiSearch, FiPlus, FiEdit, FiTrash2, FiDownload } from "react-icons/fi";
 import API from "../api/axios";
+import ConfirmModal from "../components/ConfirmModal";
+import { exportToCSV } from "../utils/exportCSV";
 import "../styles/table.css";
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const navigate = useNavigate();
 
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-
       const res = await API.get("/customers");
-      setCustomers(res.data);
+      setCustomers(res.data.customers);
     } catch (error) {
       console.error(error);
       toast.error("Failed to load customers");
@@ -25,21 +27,22 @@ const Customers = () => {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchCustomers();
   }, []);
 
-  const deleteCustomer = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this customer?"))
-      return;
-
+  const deleteCustomer = async () => {
+    if (!deleteTarget) return;
     try {
-      await API.delete(`/customers/${id}`);
+      await API.delete(`/customers/${deleteTarget}`);
       toast.success("Customer deleted successfully");
       fetchCustomers();
     } catch (error) {
       console.error(error);
       toast.error("Failed to delete customer");
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -48,9 +51,11 @@ const Customers = () => {
       customer.name.toLowerCase().includes(search.toLowerCase()) ||
       customer.email.toLowerCase().includes(search.toLowerCase()),
   );
+
   if (loading) {
     return <LoadingSpinner />;
   }
+
   return (
     <div className="products-page">
       <div className="page-header">
@@ -62,7 +67,6 @@ const Customers = () => {
         <div className="header-actions">
           <div className="search-box">
             <FiSearch className="search-icon" />
-
             <input
               type="text"
               placeholder="Search customer..."
@@ -70,6 +74,20 @@ const Customers = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+
+          <button
+            className="edit-btn"
+            onClick={() =>
+              exportToCSV(
+                "customers.csv",
+                ["name", "email", "phone", "address"],
+                filteredCustomers,
+              )
+            }
+          >
+            <FiDownload />
+            Export
+          </button>
 
           <button className="add-btn" onClick={() => navigate("/add-customer")}>
             <FiPlus />
@@ -100,13 +118,9 @@ const Customers = () => {
               filteredCustomers.map((customer) => (
                 <tr key={customer._id}>
                   <td>{customer.name}</td>
-
                   <td>{customer.email}</td>
-
                   <td>{customer.phone}</td>
-
                   <td>{customer.address}</td>
-
                   <td>
                     <div className="action-buttons">
                       <button
@@ -121,7 +135,7 @@ const Customers = () => {
 
                       <button
                         className="delete-btn"
-                        onClick={() => deleteCustomer(customer._id)}
+                        onClick={() => setDeleteTarget(customer._id)}
                       >
                         <FiTrash2 />
                         Delete
@@ -140,6 +154,16 @@ const Customers = () => {
           </tbody>
         </table>
       </div>
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete this customer?"
+        message="This action cannot be undone. All records linking to this customer will remain, but the customer profile will be permanently removed."
+        confirmLabel="Delete"
+        danger
+        onConfirm={deleteCustomer}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 };

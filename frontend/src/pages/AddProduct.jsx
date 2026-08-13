@@ -7,6 +7,7 @@ import "../styles/form.css";
 
 const AddProduct = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -19,15 +20,31 @@ const AddProduct = () => {
   });
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+    let { name, value } = e.target;
 
+    if (name === "productCode") {
+      value = value.toUpperCase();
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
+      if (!formData.category.trim()) {
+        return toast.error("Category is required");
+      }
+
+      if (!formData.productCode.trim()) {
+        return toast.error("Product Code is required");
+      }
+
+      if (!formData.supplier.trim()) {
+        return toast.error("Supplier is required");
+      }
       return toast.error("Product name is required");
     }
 
@@ -46,13 +63,17 @@ const AddProduct = () => {
     if (Number(formData.quantity) < 0) {
       return toast.error("Quantity cannot be negative");
     }
+    setLoading(true);
     try {
       await API.post("/products", formData);
       toast.success("Product added successfully.");
       navigate("/products");
     } catch (error) {
-      console.log(error);
-      toast.error("Error Adding Product");
+      console.error(error);
+
+      toast.error(error.response?.data?.message || "Failed to add product");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -137,6 +158,7 @@ const AddProduct = () => {
               placeholder="Example : PRD-001"
               value={formData.productCode}
               onChange={handleChange}
+              required
             />
           </div>
           <div className="form-group">
@@ -166,15 +188,16 @@ const AddProduct = () => {
             <button
               type="button"
               className="cancel-btn"
+              disabled={loading}
               onClick={() => navigate("/products")}
             >
               <FiArrowLeft />
               Cancel
             </button>
 
-            <button type="submit" className="save-btn">
+            <button type="submit" className="save-btn" disabled={loading}>
               <FiSave />
-              Save Product
+              {loading ? "Saving..." : "Save Product"}
             </button>
           </div>
         </form>

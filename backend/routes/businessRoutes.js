@@ -1,21 +1,15 @@
 const express = require("express");
 const router = express.Router();
-
 const {
-  createBusiness,
-  getBusiness,
-  updateBusiness,
+  createBusiness, getBusiness, updateBusiness, inviteStaff, getStaffList,
 } = require("../controllers/businessController");
-
 const protect = require("../middleware/authMiddleware");
+const adminOnly = require("../middleware/adminOnly");
 
-// Create Business Profile
 router.post("/", protect, createBusiness);
-
-// Get Business Profile
 router.get("/", protect, getBusiness);
-
-// Update Business Profile
-router.put("/", protect, updateBusiness);
+router.put("/", protect, adminOnly, updateBusiness);
+router.post("/invite-staff", protect, adminOnly, inviteStaff);
+router.get("/staff", protect, adminOnly, getStaffList);
 
 module.exports = router;

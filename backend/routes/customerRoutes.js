@@ -1,15 +1,19 @@
-const express=require("express");
-const {createCustomer,getAllCustomers,  getCustomerById,  updateCustomer,  deleteCustomer,}=require("../controllers/customerController");
-const router=express.Router(); 
-const protect = require("../middleware/authMiddleware");        
-router.post("/",protect, createCustomer);
+const express = require("express");
+const {
+  createCustomer,
+  getAllCustomers,
+  getCustomerById,
+  updateCustomer,
+  deleteCustomer,
+} = require("../controllers/customerController");
+const router = express.Router();
+const protect = require("../middleware/authMiddleware");
+const requireBusiness = require("../middleware/requireBusiness");
 
-router.get("/",protect, getAllCustomers);
+router.post("/", protect, requireBusiness, createCustomer);
+router.get("/", protect, requireBusiness, getAllCustomers);
+router.get("/:id", protect, requireBusiness, getCustomerById);
+router.put("/:id", protect, requireBusiness, updateCustomer);
+router.delete("/:id", protect, requireBusiness, deleteCustomer);
 
-router.get("/:id",protect, getCustomerById);
-
-router.put("/:id",protect, updateCustomer);
-
-router.delete("/:id",protect, deleteCustomer);
-
-module.exports=router;
+module.exports = router;

@@ -2,22 +2,37 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
-
-import { FiSearch, FiPlus, FiEdit, FiTrash2 } from "react-icons/fi";
+import {
+  FiSearch,
+  FiPlus,
+  FiEdit,
+  FiArchive,
+  FiDownload,
+} from "react-icons/fi";
 import API from "../api/axios";
+import ConfirmModal from "../components/ConfirmModal";
+import { exportToCSV } from "../utils/exportCSV";
 import "../styles/table.css";
 
 const Products = () => {
+  const navigate = useNavigate();
+
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [sortBy, setSortBy] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const PRODUCTS_PER_PAGE = 10;
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+
   const getProducts = async () => {
     try {
       setLoading(true);
 
       const res = await API.get("/products");
-      setProducts(res.data);
+
+      setProducts(res.data.products);
     } catch (error) {
       console.error(error);
       toast.error("Failed to load products");
@@ -25,30 +40,74 @@ const Products = () => {
       setLoading(false);
     }
   };
-  const deleteProduct = async (id) => {
-    const confirmdelete = window.confirm(
-      "are you sure you want to delete this product?",
-    );
-    if (!confirmdelete) return;
+
+  const [archiveTarget, setArchiveTarget] = useState(null);
+
+  const archiveProduct = async () => {
+    if (!archiveTarget) return;
     try {
-      await API.delete(`/products/${id}`);
-      toast.success("Product deleted successfully");
+      const res = await API.patch(`/products/toggle/${archiveTarget}`);
+      toast.success(res.data.message);
       getProducts();
     } catch (error) {
-      console.log(error);
-      toast.error("Failed to delete product");
+      console.error(error);
+      toast.error(error.response?.data?.message || "Failed to archive product");
+    } finally {
+      setArchiveTarget(null);
     }
   };
 
   useEffect(() => {
     getProducts();
   }, []);
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(search.toLowerCase()),
+
+  const filteredProducts = products
+    .filter((product) => {
+      const matchName = product.name
+        .toLowerCase()
+        .includes(search.toLowerCase());
+
+      const matchCategory = category === "" || product.category === category;
+
+      return matchName && matchCategory;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return a.name.localeCompare(b.name);
+
+        case "purchasePrice":
+          return a.purchasePrice - b.purchasePrice;
+
+        case "sellingPrice":
+          return a.sellingPrice - b.sellingPrice;
+
+        case "stock":
+          return a.quantity - b.quantity;
+
+        default:
+          return 0;
+      }
+    });
+
+  const totalPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE);
+
+  const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
+
+  const currentProducts = filteredProducts.slice(
+    startIndex,
+    startIndex + PRODUCTS_PER_PAGE,
   );
+
+  const totalInventoryValue = products.reduce(
+    (sum, p) => sum + p.purchasePrice * p.quantity,
+    0,
+  );
+
   if (loading) {
     return <LoadingSpinner />;
   }
+
   return (
     <div className="products-page">
       <div className="page-header">
@@ -60,6 +119,7 @@ const Products = () => {
         <div className="header-actions">
           <div className="search-box">
             <FiSearch className="search-icon" />
+
             <input
               type="text"
               placeholder="Search products..."
@@ -67,6 +127,53 @@ const Products = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <select
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="">All Categories</option>
+
+            {[...new Set(products.map((p) => p.category))].map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="">Sort By</option>
+
+            <option value="name">Name</option>
+
+            <option value="purchasePrice">Purchase Price</option>
+
+            <option value="sellingPrice">Selling Price</option>
+
+            <option value="stock">Stock</option>
+          </select>
+          <button
+            className="edit-btn"
+            onClick={() =>
+              exportToCSV(
+                "products.csv",
+                [
+                  "name",
+                  "category",
+                  "purchasePrice",
+                  "sellingPrice",
+                  "quantity",
+                  "supplier",
+                ],
+                filteredProducts,
+              )
+            }
+          >
+            <FiDownload />
+            Export
+          </button>
 
           <button className="add-btn" onClick={() => navigate("/add-product")}>
             <FiPlus />
@@ -76,8 +183,16 @@ const Products = () => {
       </div>
 
       <div className="table-info">
-        <h3>Product List</h3>
-        <span>Showing {filteredProducts.length} Products</span>
+        <div>
+          <h3>Product List</h3>
+          <span>Showing {filteredProducts.length} Products</span>
+        </div>
+
+        <div className="table-summary">
+          <strong>
+            Inventory Value: ₹ {totalInventoryValue.toLocaleString()}
+          </strong>
+        </div>
       </div>
 
       <div className="table-container">
@@ -96,7 +211,7 @@ const Products = () => {
 
           <tbody>
             {filteredProducts.length > 0 ? (
-              filteredProducts.map((product) => (
+              currentProducts.map((product) => (
                 <tr key={product._id}>
                   <td>{product.name}</td>
 
@@ -105,7 +220,9 @@ const Products = () => {
                   </td>
 
                   <td>₹ {product.purchasePrice?.toLocaleString()}</td>
+
                   <td>₹ {product.sellingPrice?.toLocaleString()}</td>
+
                   <td>
                     <span
                       className={
@@ -138,10 +255,10 @@ const Products = () => {
 
                       <button
                         className="delete-btn"
-                        onClick={() => deleteProduct(product._id)}
+                        onClick={() => setArchiveTarget(product._id)}
                       >
-                        <FiTrash2 />
-                        Delete
+                        <FiArchive />
+                        Archive
                       </button>
                     </div>
                   </td>
@@ -156,8 +273,37 @@ const Products = () => {
             )}
           </tbody>
         </table>
+        <div className="pagination">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((prev) => prev - 1)}
+          >
+            Previous
+          </button>
+
+          <span>
+            Page {currentPage} of {totalPages || 1}
+          </span>
+
+          <button
+            disabled={currentPage === totalPages || totalPages === 0}
+            onClick={() => setCurrentPage((prev) => prev + 1)}
+          >
+            Next
+          </button>
+        </div>
       </div>
+      <ConfirmModal
+        open={!!archiveTarget}
+        title="Archive this product?"
+        message="This product will be hidden from your active inventory. You can restore it later."
+        confirmLabel="Archive"
+        danger
+        onConfirm={archiveProduct}
+        onCancel={() => setArchiveTarget(null)}
+      />
     </div>
   );
 };
+
 export default Products;

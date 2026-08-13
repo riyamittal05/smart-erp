@@ -9,6 +9,9 @@ const EditProduct = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -22,58 +25,128 @@ const EditProduct = () => {
 
   useEffect(() => {
     fetchProduct();
+    // eslint-disable-next-line
   }, []);
 
   const fetchProduct = async () => {
     try {
+      setLoading(true);
+
       const res = await API.get(`/products/${id}`);
-      setFormData(res.data);
+
+      const product = res.data;
+
+      setFormData({
+        name: product.name || "",
+        category: product.category || "",
+        purchasePrice: product.purchasePrice || "",
+        sellingPrice: product.sellingPrice || "",
+        quantity: product.quantity || "",
+        supplier: product.supplier || "",
+        productCode: product.productCode || "",
+        reorderLevel: product.reorderLevel ?? 10,
+      });
     } catch (error) {
-      console.log(error);
+      console.error(error);
+      toast.error("Unable to load product.");
+      navigate("/products");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]:
+        name === "purchasePrice" ||
+        name === "sellingPrice" ||
+        name === "quantity" ||
+        name === "reorderLevel"
+          ? value === ""
+            ? ""
+            : Number(value)
+          : value,
+    }));
+  };
+
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      toast.error("Product name is required");
+      return false;
+    }
+
+    if (!formData.category.trim()) {
+      toast.error("Category is required");
+      return false;
+    }
+
+    if (!formData.supplier.trim()) {
+      toast.error("Supplier is required");
+      return false;
+    }
+
+    if (Number(formData.purchasePrice) <= 0) {
+      toast.error("Purchase Price must be greater than 0");
+      return false;
+    }
+
+    if (Number(formData.sellingPrice) <= 0) {
+      toast.error("Selling Price must be greater than 0");
+      return false;
+    }
+
+    if (Number(formData.sellingPrice) < Number(formData.purchasePrice)) {
+      toast.error("Selling Price cannot be less than Purchase Price");
+      return false;
+    }
+
+    if (Number(formData.quantity) < 0) {
+      toast.error("Quantity cannot be negative");
+      return false;
+    }
+
+    if (Number(formData.reorderLevel) < 0) {
+      toast.error("Reorder Level cannot be negative");
+      return false;
+    }
+
+    return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim()) {
-      return toast.error("Product name is required");
-    }
 
-    if (Number(formData.purchasePrice) <= 0) {
-      return toast.error("Purchase Price must be greater than 0");
-    }
+    if (!validateForm()) return;
 
-    if (Number(formData.sellingPrice) <= 0) {
-      return toast.error("Selling Price must be greater than 0");
-    }
-
-    if (Number(formData.sellingPrice) < Number(formData.purchasePrice)) {
-      return toast.error("Selling Price cannot be less than Purchase Price");
-    }
-
-    if (Number(formData.quantity) < 0) {
-      return toast.error("Quantity cannot be negative");
-    }
-
-    if (Number(formData.quantity) < 0) {
-      return toast.error("Quantity cannot be negative");
-    }
     try {
+      setSaving(true);
+
       await API.put(`/products/${id}`, formData);
+
       toast.success("Product updated successfully.");
+
       navigate("/products");
     } catch (error) {
-      console.log(error);
+      console.error(error);
+
       toast.error(error.response?.data?.message || "Failed to update product");
+    } finally {
+      setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="form-page">
+        <div className="form-card">
+          <h2>Loading Product...</h2>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="form-page">
@@ -161,19 +234,32 @@ const EditProduct = () => {
             />
           </div>
 
+          <div className="form-group">
+            <label>Reorder Level</label>
+            <input
+              type="number"
+              name="reorderLevel"
+              placeholder="Enter Reorder Level"
+              value={formData.reorderLevel}
+              onChange={handleChange}
+              min="0"
+            />
+          </div>
+
           <div className="form-buttons">
             <button
               type="button"
               className="cancel-btn"
               onClick={() => navigate("/products")}
+              disabled={saving}
             >
               <FiArrowLeft />
               Cancel
             </button>
 
-            <button type="submit" className="save-btn">
+            <button type="submit" className="save-btn" disabled={saving}>
               <FiSave />
-              Update Product
+              {saving ? " Updating..." : " Update Product"}
             </button>
           </div>
         </form>

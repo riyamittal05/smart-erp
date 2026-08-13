@@ -7,23 +7,45 @@ const saleItemSchema = new mongoose.Schema(
       ref: "Product",
       required: true,
     },
-
     quantity: {
       type: Number,
       required: true,
       min: 1,
     },
-
-    price: {
+    mrp: {
+      
       type: Number,
       required: true,
       min: 0,
     },
-
+    price: {
+      
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    purchaseCost: {
+     
+      type: Number,
+      required: true,
+      min: 0,
+    },
     total: {
       type: Number,
       required: true,
       min: 0,
+    },
+    profit: {
+
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    discount: {
+     
+      type: Number,
+      required: true,
+      default: 0,
     },
   },
   { _id: false }
@@ -31,25 +53,21 @@ const saleItemSchema = new mongoose.Schema(
 
 const saleSchema = new mongoose.Schema(
   {
-    user: {
+    business: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Business",
       required: true,
       index: true,
     },
-
     invoiceNumber: {
       type: Number,
-      unique: true,
       index: true,
     },
-
     customer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Customer",
       required: true,
     },
-
     items: {
       type: [saleItemSchema],
       required: true,
@@ -60,22 +78,30 @@ const saleSchema = new mongoose.Schema(
         message: "At least one product is required.",
       },
     },
-
     grandTotal: {
       type: Number,
       required: true,
       min: 0,
     },
-
+    totalProfit: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    totalDiscount: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
     paymentStatus: {
       type: String,
       enum: ["Paid", "Pending"],
       default: "Paid",
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
+
+saleSchema.index({ business: 1, invoiceNumber: 1 }, { unique: true });
 
 module.exports = mongoose.model("Sale", saleSchema);

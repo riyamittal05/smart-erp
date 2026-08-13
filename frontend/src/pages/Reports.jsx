@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import API from "../api/axios";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { toast } from "react-toastify";
+import { FiDownload } from "react-icons/fi";
+import { exportToCSV } from "../utils/exportCSV";
 
 import "../styles/table.css";
 import "../styles/reports.css";
@@ -41,6 +43,15 @@ const Reports = () => {
     return <LoadingSpinner />;
   }
 
+  const salesForExport = (salesReport.sales || []).map((sale) => ({
+    customer: sale.customer?.name || "N/A",
+    date: new Date(sale.createdAt).toLocaleDateString("en-IN"),
+    grandTotal: sale.grandTotal,
+    profit: sale.totalProfit || 0,
+    discount: sale.totalDiscount || 0,
+    paymentStatus: sale.paymentStatus,
+  }));
+
   return (
     <div className="reports-page">
       <div className="report-header">
@@ -49,7 +60,6 @@ const Reports = () => {
       </div>
 
       {/* Summary Cards */}
-
       <div className="report-cards">
         <div className="report-card">
           <h3>Total Sales</h3>
@@ -57,9 +67,30 @@ const Reports = () => {
         </div>
 
         <div className="report-card">
-          <h3>Total Revenue</h3>
+          <h3>Revenue Collected</h3>
           <p>
             ₹ {Number(salesReport.totalRevenue || 0).toLocaleString("en-IN")}
+          </p>
+        </div>
+
+        <div className="report-card">
+          <h3>Pending Amount</h3>
+          <p>
+            ₹ {Number(salesReport.pendingAmount || 0).toLocaleString("en-IN")}
+          </p>
+        </div>
+
+        <div className="report-card">
+          <h3>Total Profit</h3>
+          <p>
+            ₹ {Number(salesReport.totalProfit || 0).toLocaleString("en-IN")}
+          </p>
+        </div>
+
+        <div className="report-card">
+          <h3>Total Discount Given</h3>
+          <p>
+            ₹ {Number(salesReport.totalDiscount || 0).toLocaleString("en-IN")}
           </p>
         </div>
 
@@ -75,9 +106,30 @@ const Reports = () => {
       </div>
 
       {/* Sales Report */}
-
       <div className="report-section">
-        <h2>Sales Report</h2>
+        <div className="report-section-header">
+          <h2>Sales Report</h2>
+          <button
+            className="edit-btn"
+            onClick={() =>
+              exportToCSV(
+                "sales-report.csv",
+                [
+                  "customer",
+                  "date",
+                  "grandTotal",
+                  "profit",
+                  "discount",
+                  "paymentStatus",
+                ],
+                salesForExport,
+              )
+            }
+          >
+            <FiDownload />
+            Export CSV
+          </button>
+        </div>
 
         <table className="product-table">
           <thead>
@@ -86,6 +138,8 @@ const Reports = () => {
               <th>Products</th>
               <th>Total Qty</th>
               <th>Grand Total</th>
+              <th>Profit</th>
+              <th>Discount</th>
               <th>Payment</th>
             </tr>
           </thead>
@@ -114,18 +168,35 @@ const Reports = () => {
 
                     <td>₹ {Number(sale.grandTotal).toLocaleString("en-IN")}</td>
 
+                    <td
+                      style={{
+                        color:
+                          (sale.totalProfit || 0) >= 0
+                            ? "var(--success)"
+                            : "var(--danger)",
+                      }}
+                    >
+                      ₹ {Number(sale.totalProfit || 0).toLocaleString("en-IN")}
+                    </td>
+
+                    <td>
+                      {sale.totalDiscount > 0
+                        ? `₹ ${Number(sale.totalDiscount).toLocaleString("en-IN")}`
+                        : "-"}
+                    </td>
+
                     <td>
                       <span
                         className="category-badge"
                         style={{
                           background:
                             sale.paymentStatus === "Paid"
-                              ? "#d1fae5"
-                              : "#fef3c7",
+                              ? "var(--success-bg)"
+                              : "var(--warning-bg)",
                           color:
                             sale.paymentStatus === "Paid"
-                              ? "#065f46"
-                              : "#92400e",
+                              ? "var(--success)"
+                              : "var(--accent-dark)",
                         }}
                       >
                         {sale.paymentStatus}
@@ -136,7 +207,7 @@ const Reports = () => {
               })
             ) : (
               <tr>
-                <td colSpan="5" className="empty-state">
+                <td colSpan="7" className="empty-state">
                   No sales found.
                 </td>
               </tr>
@@ -146,9 +217,29 @@ const Reports = () => {
       </div>
 
       {/* Products Report */}
-
       <div className="report-section">
-        <h2>Products Report</h2>
+        <div className="report-section-header">
+          <h2>Products Report</h2>
+          <button
+            className="edit-btn"
+            onClick={() =>
+              exportToCSV(
+                "products-report.csv",
+                [
+                  "name",
+                  "category",
+                  "purchasePrice",
+                  "sellingPrice",
+                  "quantity",
+                ],
+                productReport.products || [],
+              )
+            }
+          >
+            <FiDownload />
+            Export CSV
+          </button>
+        </div>
 
         <table className="product-table">
           <thead>
@@ -183,10 +274,24 @@ const Reports = () => {
         </table>
       </div>
 
-      {/* Customers Report */}
-
+      {/* Customers Report - now with purchase history */}
       <div className="report-section">
-        <h2>Customers Report</h2>
+        <div className="report-section-header">
+          <h2>Customers Report</h2>
+          <button
+            className="edit-btn"
+            onClick={() =>
+              exportToCSV(
+                "customers-report.csv",
+                ["name", "email", "phone", "totalOrders", "totalSpent"],
+                customerReport.customers || [],
+              )
+            }
+          >
+            <FiDownload />
+            Export CSV
+          </button>
+        </div>
 
         <table className="product-table">
           <thead>
@@ -194,7 +299,9 @@ const Reports = () => {
               <th>Name</th>
               <th>Email</th>
               <th>Phone</th>
-              <th>Address</th>
+              <th>Orders</th>
+              <th>Total Spent</th>
+              <th>Items Purchased</th>
             </tr>
           </thead>
 
@@ -205,12 +312,35 @@ const Reports = () => {
                   <td>{customer.name}</td>
                   <td>{customer.email}</td>
                   <td>{customer.phone}</td>
-                  <td>{customer.address}</td>
+                  <td>{customer.totalOrders}</td>
+                  <td>
+                    ₹ {Number(customer.totalSpent).toLocaleString("en-IN")}
+                  </td>
+                  <td>
+                    {customer.purchasedItems?.length ? (
+                      customer.purchasedItems.slice(0, 3).map((item, i) => (
+                        <div key={i} style={{ fontSize: "12.5px" }}>
+                          • {item.productName} × {item.quantity}
+                        </div>
+                      ))
+                    ) : (
+                      <span style={{ color: "var(--text-muted)" }}>
+                        No purchases yet
+                      </span>
+                    )}
+                    {customer.purchasedItems?.length > 3 && (
+                      <div
+                        style={{ fontSize: "12px", color: "var(--text-muted)" }}
+                      >
+                        +{customer.purchasedItems.length - 3} more
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="4" className="empty-state">
+                <td colSpan="6" className="empty-state">
                   No customers found.
                 </td>
               </tr>

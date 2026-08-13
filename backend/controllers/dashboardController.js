@@ -5,55 +5,64 @@ const Customer = require("../models/Customer");
 
 const getDashboardData = async (req, res) => {
   try {
-    // Total Products
     const totalProducts = await Product.countDocuments({
-      user: req.user.id,
+      business: req.user.businessId,
       isActive: true,
     });
 
-    // Total Customers
     const totalCustomers = await Customer.countDocuments({
-      user: req.user.id,
+      business: req.user.businessId,
     });
 
-    // Total Sales
     const totalSales = await Sale.countDocuments({
-      user: req.user.id,
+      business: req.user.businessId,
     });
 
-    // Total Revenue
+    // Sirf "Paid" sales ka hi revenue asli income hai
     const revenueData = await Sale.aggregate([
       {
         $match: {
-          user: new mongoose.Types.ObjectId(req.user.id),
+          business: new mongoose.Types.ObjectId(req.user.businessId),
+          paymentStatus: "Paid",
         },
       },
       {
         $group: {
           _id: null,
-          totalRevenue: {
-            $sum: "$grandTotal",
-          },
+          totalRevenue: { $sum: "$grandTotal" },
         },
       },
     ]);
 
-    const totalRevenue =
-      revenueData.length > 0 ? revenueData[0].totalRevenue : 0;
-
-    // Low Stock Products
-    const lowStock = await Product.countDocuments({
-      user: req.user.id,
-      quantity: {
-        $gt: 0,
-        $lte: 10,
+    // "Pending" sales ka total = jo abhi tak collect nahi hua (receivables)
+    const pendingData = await Sale.aggregate([
+      {
+        $match: {
+          business: new mongoose.Types.ObjectId(req.user.businessId),
+          paymentStatus: "Pending",
+        },
       },
+      {
+        $group: {
+          _id: null,
+          pendingAmount: { $sum: "$grandTotal" },
+          pendingCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const totalRevenue = revenueData.length > 0 ? revenueData[0].totalRevenue : 0;
+    const pendingAmount = pendingData.length > 0 ? pendingData[0].pendingAmount : 0;
+    const pendingCount = pendingData.length > 0 ? pendingData[0].pendingCount : 0;
+
+    const lowStock = await Product.countDocuments({
+      business: req.user.businessId,
+      quantity: { $gt: 0, $lte: 10 },
       isActive: true,
     });
 
-    // Out of Stock Products
     const outOfStock = await Product.countDocuments({
-      user: req.user.id,
+      business: req.user.businessId,
       quantity: 0,
       isActive: true,
     });
@@ -63,19 +72,15 @@ const getDashboardData = async (req, res) => {
       totalCustomers,
       totalSales,
       totalRevenue,
+      pendingAmount,
+      pendingCount,
       lowStock,
       outOfStock,
     });
-
   } catch (error) {
     console.error("Dashboard Error:", error);
-
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
-module.exports = {
-  getDashboardData,
-};
+module.exports = { getDashboardData };
