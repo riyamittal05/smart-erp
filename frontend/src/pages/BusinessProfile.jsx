@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FiSave } from "react-icons/fi";
 import { toast } from "react-toastify";
 import API from "../api/axios";
 import "../styles/form.css";
 
 const BusinessProfile = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     shopName: "",
     ownerName: "",
@@ -80,18 +82,24 @@ const BusinessProfile = () => {
 
         toast.success("Business Profile Updated Successfully");
       } else {
-        await API.post("/business", formData, {
+        const { data } = await API.post("/business", formData, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
 
+        // Ab localStorage mein businessId save karo, warna app ko pata
+        // hi nahi chalega ki business ban chuki hai
+        localStorage.setItem("businessId", data._id);
+
         toast.success("Business Profile Saved Successfully");
         setIsUpdate(true);
+
+        navigate("/dashboard");
       }
     } catch (err) {
       console.log(err);
-      toast.error("Something went wrong");
+      toast.error(err.response?.data?.message || "Something went wrong");
     }
   };
 
@@ -105,8 +113,12 @@ const BusinessProfile = () => {
     <div className="form-page">
       <div className="form-card">
         <div className="form-header">
-          <h2>Business Profile</h2>
-          <p>Manage your business information for invoices.</p>
+          <h2>{isUpdate ? "Business Profile" : "Set Up Your Shop"}</h2>
+          <p>
+            {isUpdate
+              ? "Manage your business information for invoices."
+              : "Before you can add products, customers or sales, set up your shop details. This only takes a minute."}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="erp-form">
